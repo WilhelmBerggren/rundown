@@ -55,7 +55,9 @@ function escapeHtml(str: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/\n/g, "&#10;")
+    .replace(/\r/g, "&#13;");
 }
 
 /** Build a map from snippet index → output text from the token stream. */

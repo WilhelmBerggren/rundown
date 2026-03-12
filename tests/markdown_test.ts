@@ -187,3 +187,10 @@ Deno.test("renderPage: data-raw contains the escaped source text", () => {
   // Quotes and ampersands are HTML-escaped in the attribute value
   assert(html.includes('data-raw="A &quot;quoted&quot; &amp; paragraph.'));
 });
+
+Deno.test("renderPage: data-raw encodes newlines as &#10; for attribute safety", () => {
+  const md = "```js\nx()\n```\n";
+  const html = renderPage(md, "test.md");
+  // Newlines in token.raw must be encoded as &#10; so dataset.raw round-trips correctly
+  assert(html.includes('data-raw="```js&#10;x()&#10;```&#10;"'));
+});
