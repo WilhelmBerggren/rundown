@@ -51,23 +51,31 @@ export function updateOutputBlock(
     let j = i;
     while (j < lines.length && lines[j].trim() === "") j++;
 
+    // Track "output:" label line so it's included in replacements
+    let outputLabelLine: number | null = null;
+    if (j < lines.length && lines[j].trim() === "output:") {
+      outputLabelLine = j;
+      j++;
+      while (j < lines.length && lines[j].trim() === "") j++;
+    }
+
     const outputFenceMatch = j < lines.length
       ? lines[j].match(/^(`{3,})output\b/)
       : null;
 
-    const newOutputBlock = ["```output", ...output.split("\n"), "```"];
+    const newOutputBlock = ["output:", "```output", ...output.split("\n"), "```"];
 
     if (outputFenceMatch) {
-      // Replace existing output block
+      // Replace existing output block (and its label if present)
       const outputFence = outputFenceMatch[1];
-      const outputStart = j;
+      const replaceFrom = outputLabelLine ?? j;
       j++;
       while (j < lines.length && !lines[j].startsWith(outputFence)) j++;
       const outputEnd = j; // index of closing fence
 
-      lines.splice(outputStart, outputEnd - outputStart + 1, ...newOutputBlock);
+      lines.splice(replaceFrom, outputEnd - replaceFrom + 1, ...newOutputBlock);
     } else {
-      // Insert after closeLine: blank line + output block
+      // Insert after closeLine: blank line + label + output block
       lines.splice(closeLine + 1, 0, "", ...newOutputBlock);
     }
 

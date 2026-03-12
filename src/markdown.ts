@@ -23,6 +23,8 @@ export function parseSnippets(
   for (const token of tokens) {
     // Blank lines preserve association
     if (token.type === "space") continue;
+    // "output:" label written by rundoc doesn't break association
+    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
 
     if (token.type !== "code") {
       // Any non-blank, non-code token breaks association
@@ -73,6 +75,7 @@ export function renderPage(content: string, filePath: string): string {
   let lastRunnable: number | null = null;
   for (const token of tokens) {
     if (token.type === "space") continue;
+    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
     if (token.type !== "code") { lastRunnable = null; continue; }
     const lang = (token.lang ?? "").toLowerCase();
     if (lang === "output") {
@@ -112,6 +115,8 @@ export function renderPage(content: string, filePath: string): string {
       } else {
         parts.push(`<pre><code class="language-${escapeHtml(lang)}">${escapeHtml(token.text)}</code></pre>`);
       }
+    } else if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") {
+      // Suppress "output:" label — it's in the file for plain renderers; CSS handles it in the browser
     } else {
       // Let marked render all other tokens (headings, paragraphs, lists, etc.)
       // Parser.parse requires a TokensList (Token[] with a `links` property).

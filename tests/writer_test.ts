@@ -8,10 +8,11 @@ Deno.test("updateOutputBlock: inserts output block after snippet", () => {
   const lines = result.split("\n");
   // Find the closing fence of the snippet
   const closeFenceIdx = lines.indexOf("```", 1); // second ``` occurrence
-  assertEquals(lines[closeFenceIdx + 1], "");       // blank line
-  assertEquals(lines[closeFenceIdx + 2], "```output");
-  assertEquals(lines[closeFenceIdx + 3], "1");
-  assertEquals(lines[closeFenceIdx + 4], "```");
+  assertEquals(lines[closeFenceIdx + 1], "");         // blank line
+  assertEquals(lines[closeFenceIdx + 2], "output:");  // label
+  assertEquals(lines[closeFenceIdx + 3], "```output");
+  assertEquals(lines[closeFenceIdx + 4], "1");
+  assertEquals(lines[closeFenceIdx + 5], "```");
 });
 
 Deno.test("updateOutputBlock: replaces existing output block", () => {
