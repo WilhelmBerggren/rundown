@@ -24,7 +24,7 @@ Deno.test("runSnippet: notFound is false when interpreter exists", async () => {
   assertEquals(result.notFound, false);
 });
 
-Deno.test("runSnippet: notFound is true when interpreter missing", async () => {
+Deno.test("runSnippet: notFound result shape is correct regardless of ruby presence", async () => {
   // ruby maps to the "ruby" interpreter; if not installed, we get notFound=true
   const result = await runSnippet("ruby", "puts 'hi'");
   if (result.notFound) {
