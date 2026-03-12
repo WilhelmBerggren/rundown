@@ -1,6 +1,6 @@
 // tests/writer_test.ts
-import { assertEquals } from "@std/assert";
-import { updateOutputBlock } from "../src/writer.ts";
+import { assert, assertEquals } from "@std/assert";
+import { updateBlock, updateOutputBlock } from "../src/writer.ts";
 
 Deno.test("updateOutputBlock: inserts output block after snippet", () => {
   const content = ["```js", "console.log(1);", "```", "", "Some text"].join("\n");
@@ -60,5 +60,69 @@ Deno.test("updateOutputBlock: throws if snippet index not found", () => {
   } catch {
     threw = true;
   }
+  assertEquals(threw, true);
+});
+
+Deno.test("updateBlock: replaces a single paragraph", () => {
+  // token.raw for a paragraph includes trailing newline
+  const content = "Hello world\n";
+  const result = updateBlock(content, 0, "Updated paragraph\n");
+  assertEquals(result, "Updated paragraph\n");
+});
+
+Deno.test("updateBlock: replaces second cell skipping the first", () => {
+  const content = "# Title\n\nSome paragraph.\n";
+  const result = updateBlock(content, 1, "New paragraph.\n");
+  assert(result.includes("# Title"));
+  assert(result.includes("New paragraph."));
+  assert(!result.includes("Some paragraph."));
+});
+
+Deno.test("updateBlock: skips output: labels and output blocks, counts prose as cells", () => {
+  // Cells: heading=0, snippet=1, output: label=skipped, output block=skipped, paragraph=2
+  const content = [
+    "# Title",
+    "",
+    "```js",
+    "x()",
+    "```",
+    "",
+    "output:",
+    "```output",
+    "result",
+    "```",
+    "",
+    "End paragraph.",
+  ].join("\n") + "\n";
+  const result = updateBlock(content, 2, "Updated end.\n");
+  assert(result.includes("# Title"));
+  assert(result.includes("Updated end."));
+  assert(!result.includes("End paragraph."));
+});
+
+Deno.test("updateBlock: handles duplicate blocks via searchFrom cursor", () => {
+  const content = "Same text.\n\nSame text.\n";
+  // Cell 0 = first paragraph, cell 1 = second paragraph
+  const result = updateBlock(content, 1, "Different.\n");
+  // First occurrence unchanged
+  assert(result.includes("Same text."));
+  assert(result.includes("Different."));
+  // Only one "Same text." remains
+  assertEquals((result.match(/Same text\./g) ?? []).length, 1);
+});
+
+Deno.test("updateBlock: unknown language code block is a cell", () => {
+  const content = "```mermaid\ngraph TD\n```\n\nParagraph.\n";
+  // mermaid block = cell 0, paragraph = cell 1
+  const result = updateBlock(content, 1, "Updated.\n");
+  assert(result.includes("mermaid"));
+  assert(result.includes("Updated."));
+  assert(!result.includes("Paragraph."));
+});
+
+Deno.test("updateBlock: throws if cell index not found", () => {
+  const content = "Just one paragraph.\n";
+  let threw = false;
+  try { updateBlock(content, 5, "x"); } catch { threw = true; }
   assertEquals(threw, true);
 });

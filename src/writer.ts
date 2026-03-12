@@ -1,5 +1,13 @@
 // src/writer.ts
+import { Lexer } from "marked";
 import { KNOWN_LANGUAGES } from "./languages.ts";
+
+function isCellExcluded(token: { type: string; lang?: string; text?: string }): boolean {
+  if (token.type === "space") return true;
+  if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") return true;
+  if (token.type === "code" && ((token as { lang?: string }).lang ?? "").toLowerCase() === "output") return true;
+  return false;
+}
 
 /**
  * Returns new markdown content with the output block for snippet at
@@ -83,6 +91,42 @@ export function updateOutputBlock(
   }
 
   throw new Error(`Snippet index ${snippetIndex} not found`);
+}
+
+/**
+ * Returns new markdown content with the source text of cell at `cellIndex`
+ * replaced by `newMarkdown`. Cell indices are assigned sequentially to all
+ * rendered tokens, excluding: space tokens, `output:` label paragraphs, and
+ * ```output blocks.
+ *
+ * The searchFrom cursor advances past every token (including excluded ones) so
+ * that duplicate blocks are resolved by position, not just text content.
+ *
+ * Throws if the cell index is not found.
+ */
+export function updateBlock(
+  content: string,
+  cellIndex: number,
+  newMarkdown: string,
+): string {
+  const tokens = Lexer.lex(content);
+  let cellCount = 0;
+  let searchFrom = 0;
+
+  for (const token of tokens) {
+    const pos = content.indexOf(token.raw, searchFrom);
+    if (pos !== -1) searchFrom = pos + token.raw.length;
+
+    if (isCellExcluded(token)) continue;
+
+    if (cellCount === cellIndex) {
+      if (pos === -1) throw new Error(`token.raw not found in source for cell ${cellIndex}`);
+      return content.slice(0, pos) + newMarkdown + content.slice(pos + token.raw.length);
+    }
+    cellCount++;
+  }
+
+  throw new Error(`Cell index ${cellIndex} not found`);
 }
 
 /**
