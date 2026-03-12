@@ -1,18 +1,25 @@
 // tests/writer_test.ts
 import { assert, assertEquals } from "@std/assert";
-import { removeOutputBlock, updateBlock, updateOutputBlock } from "../src/writer.ts";
+import {
+  removeOutputBlock,
+  updateBlock,
+  updateOutputBlock,
+} from "../src/writer.ts";
 
 Deno.test("updateOutputBlock: inserts output block after snippet", () => {
-  const content = ["```js", "console.log(1);", "```", "", "Some text"].join("\n");
+  const content = ["```js", "console.log(1);", "```", "", "Some text"].join(
+    "\n",
+  );
   const result = updateOutputBlock(content, 0, "1");
   const lines = result.split("\n");
   // Find the closing fence of the snippet
   const closeFenceIdx = lines.indexOf("```", 1); // second ``` occurrence
-  assertEquals(lines[closeFenceIdx + 1], "");         // blank line
-  assertEquals(lines[closeFenceIdx + 2], "output:");  // label
-  assertEquals(lines[closeFenceIdx + 3], "```output");
-  assertEquals(lines[closeFenceIdx + 4], "1");
-  assertEquals(lines[closeFenceIdx + 5], "```");
+  assertEquals(lines[closeFenceIdx + 1], ""); // blank line
+  assertEquals(lines[closeFenceIdx + 2], "output:"); // label
+  assertEquals(lines[closeFenceIdx + 3], ""); // blank line
+  assertEquals(lines[closeFenceIdx + 4], "```output");
+  assertEquals(lines[closeFenceIdx + 5], "1");
+  assertEquals(lines[closeFenceIdx + 6], "```");
 });
 
 Deno.test("updateOutputBlock: replaces existing output block", () => {
@@ -31,15 +38,9 @@ Deno.test("updateOutputBlock: replaces existing output block", () => {
 });
 
 Deno.test("updateOutputBlock: targets correct snippet by index", () => {
-  const content = [
-    "```js",
-    "a()",
-    "```",
-    "",
-    "```python",
-    "b()",
-    "```",
-  ].join("\n");
+  const content = ["```js", "a()", "```", "", "```python", "b()", "```"].join(
+    "\n",
+  );
   const result = updateOutputBlock(content, 1, "b output");
   assertEquals(result.includes("b output"), true);
   // First snippet has no output block
@@ -78,27 +79,31 @@ Deno.test("updateBlock: replaces second cell skipping the first", () => {
   assert(!result.includes("Some paragraph."));
 });
 
-Deno.test("updateBlock: skips output: labels and output blocks, counts prose as cells", () => {
-  // Cells: heading=0, snippet=1, output: label=skipped, output block=skipped, paragraph=2
-  const content = [
-    "# Title",
-    "",
-    "```js",
-    "x()",
-    "```",
-    "",
-    "output:",
-    "```output",
-    "result",
-    "```",
-    "",
-    "End paragraph.",
-  ].join("\n") + "\n";
-  const result = updateBlock(content, 2, "Updated end.\n");
-  assert(result.includes("# Title"));
-  assert(result.includes("Updated end."));
-  assert(!result.includes("End paragraph."));
-});
+Deno.test(
+  "updateBlock: skips output: labels and output blocks, counts prose as cells",
+  () => {
+    // Cells: heading=0, snippet=1, output: label=skipped, output block=skipped, paragraph=2
+    const content =
+      [
+        "# Title",
+        "",
+        "```js",
+        "x()",
+        "```",
+        "",
+        "output:",
+        "```output",
+        "result",
+        "```",
+        "",
+        "End paragraph.",
+      ].join("\n") + "\n";
+    const result = updateBlock(content, 2, "Updated end.\n");
+    assert(result.includes("# Title"));
+    assert(result.includes("Updated end."));
+    assert(!result.includes("End paragraph."));
+  },
+);
 
 Deno.test("updateBlock: handles duplicate blocks via searchFrom cursor", () => {
   const content = "Same text.\n\nSame text.\n";
@@ -121,18 +126,19 @@ Deno.test("updateBlock: unknown language code block is a cell", () => {
 });
 
 Deno.test("removeOutputBlock: removes output block and label", () => {
-  const content = [
-    "```js",
-    "a()",
-    "```",
-    "",
-    "output:",
-    "```output",
-    "result",
-    "```",
-    "",
-    "End.",
-  ].join("\n") + "\n";
+  const content =
+    [
+      "```js",
+      "a()",
+      "```",
+      "",
+      "output:",
+      "```output",
+      "result",
+      "```",
+      "",
+      "End.",
+    ].join("\n") + "\n";
   const result = removeOutputBlock(content, 0);
   assert(!result.includes("result"));
   assert(!result.includes("```output"));
@@ -141,10 +147,13 @@ Deno.test("removeOutputBlock: removes output block and label", () => {
   assert(result.includes("End."));
 });
 
-Deno.test("removeOutputBlock: returns content unchanged when no output block", () => {
-  const content = ["```js", "a()", "```"].join("\n");
-  assertEquals(removeOutputBlock(content, 0), content);
-});
+Deno.test(
+  "removeOutputBlock: returns content unchanged when no output block",
+  () => {
+    const content = ["```js", "a()", "```"].join("\n");
+    assertEquals(removeOutputBlock(content, 0), content);
+  },
+);
 
 Deno.test("removeOutputBlock: targets correct snippet by index", () => {
   const content = [
@@ -170,6 +179,10 @@ Deno.test("removeOutputBlock: targets correct snippet by index", () => {
 Deno.test("updateBlock: throws if cell index not found", () => {
   const content = "Just one paragraph.\n";
   let threw = false;
-  try { updateBlock(content, 5, "x"); } catch { threw = true; }
+  try {
+    updateBlock(content, 5, "x");
+  } catch {
+    threw = true;
+  }
   assertEquals(threw, true);
 });

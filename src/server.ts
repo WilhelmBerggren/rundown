@@ -104,10 +104,13 @@ export function createApp(filePath: string) {
 
     try {
       const content = await Deno.readTextFile(filePath);
-      const updated = updateBlock(content, cellIndex, newContent);
+      const normalized = /^`{3,}[\w-]*\n/.test(newContent)
+        ? newContent.replace(/\n{3,}/g, "\n\n")
+        : newContent;
+      const updated = updateBlock(content, cellIndex, normalized);
       watcher.suppress();
       await writeOutput(filePath, updated);
-      const k = countNewCells(newContent);
+      const k = countNewCells(normalized);
       const fragments = Array.from({ length: k }, (_, i) =>
         renderCellFragment(updated, cellIndex + i)
       ).join("");

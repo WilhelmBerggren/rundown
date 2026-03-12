@@ -71,7 +71,7 @@ export function updateOutputBlock(
       ? lines[j].match(/^(`{3,})output\b/)
       : null;
 
-    const newOutputBlock = ["output:", "```output", ...output.split("\n"), "```"];
+    const newOutputBlock = ["output:", "", "```output", ...output.split("\n"), "```"];
 
     if (outputFenceMatch) {
       // Replace existing output block (and its label if present)

@@ -1,15 +1,17 @@
 # rundown
-rundown turns your markdown file into a notebook
+
+rundown is a markdown editor that can run code snippets!
 
 ## Usage
 
 ```sh
-echo hello there
+echo hello
 ```
 
 output:
+
 ```output
-hello there
+hello
 ```
 
 ```sh
@@ -25,14 +27,15 @@ console.log(new Date());
 ```
 
 output:
+
 ```output
-2026-03-12T20:36:31.235Z
+2026-03-12T20:41:38.154Z
 ```
 
-When you run it, its output gets appended below the code snippet. If you run it again, it gets replaced.
+When you run it, its output gets appended below the code snippet. If you run it
+again, it gets replaced.
 
 ## Installation
-
 
 ```sh
 brew install deno
@@ -47,11 +50,11 @@ deno compile --allow-read --allow-write --allow-net --allow-run \
 
 ## Supported languages
 
-| Language tag | Interpreter required |
-|---|---|
-| `js`, `javascript` | `deno` |
-| `ts`, `typescript` | `deno` |
-| `python`, `py` | `python3` |
-| `bash` | `bash` |
-| `sh` | `sh` |
-| `ruby` | `ruby` |
+| Language tag       | Interpreter required |
+| ------------------ | -------------------- |
+| `js`, `javascript` | `deno`               |
+| `ts`, `typescript` | `deno`               |
+| `python`, `py`     | `python3`            |
+| `bash`             | `bash`               |
+| `sh`               | `sh`                 |
+| `ruby`             | `ruby`               |
