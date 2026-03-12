@@ -1,0 +1,13 @@
+{
+  "tasks": {
+    "start": "deno run --allow-read --allow-write --allow-net --allow-run=deno,python3,bash,sh,ruby,open,xdg-open,cmd src/main.ts",
+    "test": "deno test --allow-read --allow-write --allow-net --allow-run=deno,python3,bash,sh,ruby tests/",
+    "compile": "deno compile --allow-read --allow-write --allow-net --allow-run=deno,python3,bash,sh,ruby,open,xdg-open,cmd --output rundoc src/main.ts"
+  },
+  "imports": {
+    "hono": "npm:hono@4",
+    "marked": "npm:marked@12",
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/path": "jsr:@std/path@1"
+  }
+}
