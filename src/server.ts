@@ -34,19 +34,17 @@ export function createApp(filePath: string) {
 
   // POST /run — execute snippet, write output, return fragment
   app.post("/run", async (c) => {
-    // Reject if a run is already in progress
-    if (runLock) {
-      return c.html(
-        `<pre class="output error">Error: a run is already in progress</pre>`,
-        429,
-      );
-    }
-
+    // Parse form data first so we have index for error fragments
     const form = await c.req.formData();
     const indexStr = form.get("index");
     if (indexStr === null) return c.text("Missing index", 400);
     const index = parseInt(String(indexStr), 10);
     if (isNaN(index)) return c.text("Invalid index", 400);
+
+    // Reject if a run is already in progress
+    if (runLock) {
+      return c.html(outputFragment(index, "Error: a run is already in progress", true), 429);
+    }
 
     let resolveLock!: () => void;
     runLock = new Promise<void>((resolve) => { resolveLock = resolve; });
@@ -94,14 +92,16 @@ export function createApp(filePath: string) {
 
   // GET /events — SSE for file-change reload
   app.get("/events", (c) => {
+    let streamController: ReadableStreamDefaultController | null = null;
     const stream = new ReadableStream({
       start(controller) {
+        streamController = controller;
         watcher.addClient(controller);
         // Send a comment to keep the connection alive
         controller.enqueue(new TextEncoder().encode(": connected\n\n"));
       },
-      cancel(controller) {
-        watcher.removeClient(controller as unknown as ReadableStreamDefaultController);
+      cancel() {
+        if (streamController) watcher.removeClient(streamController);
       },
     });
 
