@@ -60,7 +60,7 @@ export function createWatcher(filePath: string): Watcher {
     stop() {
       stopped = true;
       if (debounceTimer) clearTimeout(debounceTimer);
-      fsWatcher?.close(); // immediately terminates the for-await loop
+      try { fsWatcher?.close(); } catch { /* already closed */ }
     },
   };
 }

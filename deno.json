@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "start": "deno run --allow-read --allow-write --allow-net --allow-run=deno,python3,bash,sh,ruby,open,xdg-open,cmd src/main.ts",
+    "start": "deno run --allow-read --allow-write --allow-net --allow-run src/main.ts",
     "test": "deno test --allow-read --allow-write --allow-net --allow-run=deno,python3,bash,sh,ruby tests/",
     "compile": "deno compile --allow-read --allow-write --allow-net --allow-run=deno,python3,bash,sh,ruby,open,xdg-open,cmd --output rundoc src/main.ts"
   },
