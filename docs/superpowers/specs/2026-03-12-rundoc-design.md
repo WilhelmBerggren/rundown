@@ -170,7 +170,7 @@ deno compile \
   --allow-read \
   --allow-write \
   --allow-net \
-  --allow-run=deno,python3,bash,sh,ruby \
+  --allow-run=deno,python3,bash,sh,ruby,open,xdg-open,cmd \
   --output rundoc \
   src/main.ts
 ```
