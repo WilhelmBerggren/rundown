@@ -154,3 +154,36 @@ Deno.test("renderPage: includes SSE listener script", () => {
   assert(html.includes("EventSource"));
   assert(html.includes("/events"));
 });
+
+Deno.test("renderPage: each block gets a data-cell attribute in order", () => {
+  // heading = cell 0, paragraph = cell 1, snippet = cell 2
+  const md = "# Heading\n\nA paragraph.\n\n```js\nx()\n```\n";
+  const html = renderPage(md, "test.md");
+  assert(html.includes('data-cell="0"'));
+  assert(html.includes('data-cell="1"'));
+  assert(html.includes('data-cell="2"'));
+  assert(!html.includes('data-cell="3"'));
+});
+
+Deno.test("renderPage: output blocks are not assigned cell indices", () => {
+  // snippet = cell 0, output block = skipped, paragraph = cell 1
+  const md = "```js\nx()\n```\n\n```output\nresult\n```\n\nEnd.\n";
+  const html = renderPage(md, "test.md");
+  assert(html.includes('data-cell="0"'));
+  assert(html.includes('data-cell="1"'));
+  assert(!html.includes('data-cell="2"'));
+});
+
+Deno.test("renderPage: unknown language code block gets data-cell", () => {
+  const md = "```mermaid\ngraph TD\n```\n";
+  const html = renderPage(md, "test.md");
+  assert(html.includes('data-cell="0"'));
+  assert(!html.includes('hx-post="/run"')); // still no run button
+});
+
+Deno.test("renderPage: data-raw contains the escaped source text", () => {
+  const md = 'A "quoted" & paragraph.\n';
+  const html = renderPage(md, "test.md");
+  // Quotes and ampersands are HTML-escaped in the attribute value
+  assert(html.includes('data-raw="A &quot;quoted&quot; &amp; paragraph.'));
+});

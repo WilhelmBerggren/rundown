@@ -17,17 +17,13 @@ export function parseSnippets(
   const outputMap = new Map<number, string>();
 
   let snippetIndex = 0;
-  // Index of the last runnable snippet with no breaking token after it
   let lastRunnableIndex: number | null = null;
 
   for (const token of tokens) {
-    // Blank lines preserve association
     if (token.type === "space") continue;
-    // "output:" label written by rundoc doesn't break association
     if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
 
     if (token.type !== "code") {
-      // Any non-blank, non-code token breaks association
       lastRunnableIndex = null;
       continue;
     }
@@ -38,7 +34,6 @@ export function parseSnippets(
       if (lastRunnableIndex !== null) {
         outputMap.set(lastRunnableIndex, token.text);
       }
-      // output block itself breaks further chaining
       lastRunnableIndex = null;
       continue;
     }
@@ -48,7 +43,6 @@ export function parseSnippets(
       snippets.push({ index, lang, code: token.text });
       lastRunnableIndex = index;
     } else {
-      // Unknown language code block breaks association
       lastRunnableIndex = null;
     }
   }
@@ -64,19 +58,17 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function renderPage(content: string, filePath: string): string {
-  // Single lex — both the outputMap and the HTML walk the same token array,
-  // guaranteeing snippet indices are always in sync.
-  const tokens = Lexer.lex(content);
-
-  // Build outputMap (same logic as parseSnippets)
+/** Build a map from snippet index → output text from the token stream. */
+function buildOutputMap(tokens: TokensList): Map<number, string> {
   const outputMap = new Map<number, string>();
   let si = 0;
   let lastRunnable: number | null = null;
+
   for (const token of tokens) {
     if (token.type === "space") continue;
     if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
     if (token.type !== "code") { lastRunnable = null; continue; }
+
     const lang = (token.lang ?? "").toLowerCase();
     if (lang === "output") {
       if (lastRunnable !== null) outputMap.set(lastRunnable, token.text);
@@ -88,40 +80,69 @@ export function renderPage(content: string, filePath: string): string {
     }
   }
 
-  // Render HTML — walk tokens, handle code tokens manually
+  return outputMap;
+}
+
+/**
+ * Render a single token as a `<div data-cell="cellIndex" data-raw="...">` wrapper.
+ * `snippetIndex` is the Run-button index (separate from cell index) — only
+ * meaningful when the token is a known-language code block.
+ */
+function renderTokenCell(
+  token: Token,
+  cellIndex: number,
+  snippetIndex: number,
+  outputMap: Map<number, string>,
+  allTokens: TokensList,
+): string {
+  const rawAttr = escapeHtml(token.raw);
+
+  if (token.type === "code") {
+    const lang = (token.lang ?? "").toLowerCase();
+    if (KNOWN_LANGUAGES[lang]) {
+      const existingOutput = outputMap.get(snippetIndex) ?? "";
+      return `
+<div data-cell="${cellIndex}" data-raw="${rawAttr}" class="snippet">
+  <pre><code>${escapeHtml(token.text)}</code></pre>
+  <button
+    hx-post="/run"
+    hx-vals='{"index": ${snippetIndex}}'
+    hx-target="#output-${snippetIndex}"
+    hx-swap="outerHTML"
+    hx-indicator="#spinner-${snippetIndex}"
+  >Run</button>
+  <span id="spinner-${snippetIndex}" class="htmx-indicator">running…</span>
+  <pre id="output-${snippetIndex}" class="output">${escapeHtml(existingOutput)}</pre>
+</div>`;
+    } else {
+      return `<div data-cell="${cellIndex}" data-raw="${rawAttr}"><pre><code class="language-${escapeHtml(lang)}">${escapeHtml(token.text)}</code></pre></div>`;
+    }
+  }
+
+  const tl = Object.assign([token as Token], { links: allTokens.links });
+  return `<div data-cell="${cellIndex}" data-raw="${rawAttr}">${Parser.parse(tl)}</div>`;
+}
+
+export function renderPage(content: string, filePath: string): string {
+  const tokens = Lexer.lex(content);
+  const outputMap = buildOutputMap(tokens);
+
+  let cellIndex = 0;
   let snippetIndex = 0;
   const parts: string[] = [];
 
   for (const token of tokens) {
-    if (token.type === "code") {
-      const lang = (token.lang ?? "").toLowerCase();
-      if (lang === "output") continue; // suppressed — rendered with its snippet
-      if (KNOWN_LANGUAGES[lang]) {
-        const index = snippetIndex++;
-        const existingOutput = outputMap.get(index) ?? "";
-        parts.push(`
-<div class="snippet">
-  <pre><code>${escapeHtml(token.text)}</code></pre>
-  <button
-    hx-post="/run"
-    hx-vals='{"index": ${index}}'
-    hx-target="#output-${index}"
-    hx-swap="outerHTML"
-    hx-indicator="#spinner-${index}"
-  >Run</button>
-  <span id="spinner-${index}" class="htmx-indicator">running…</span>
-  <pre id="output-${index}" class="output">${escapeHtml(existingOutput)}</pre>
-</div>`);
-      } else {
-        parts.push(`<pre><code class="language-${escapeHtml(lang)}">${escapeHtml(token.text)}</code></pre>`);
-      }
-    } else if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") {
-      // Suppress "output:" label — it's in the file for plain renderers; CSS handles it in the browser
-    } else {
-      // Let marked render all other tokens (headings, paragraphs, lists, etc.)
-      // Parser.parse requires a TokensList (Token[] with a `links` property).
-      const tl = Object.assign([token as Token], { links: (tokens as TokensList).links });
-      parts.push(Parser.parse(tl));
+    // Excluded from cell model — skip entirely
+    if (token.type === "space") continue;
+    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
+    if (token.type === "code" && (token.lang ?? "").toLowerCase() === "output") continue;
+
+    parts.push(renderTokenCell(token, cellIndex, snippetIndex, outputMap, tokens));
+    cellIndex++;
+
+    // Advance snippet index only for known-language code blocks
+    if (token.type === "code" && KNOWN_LANGUAGES[(token.lang ?? "").toLowerCase()]) {
+      snippetIndex++;
     }
   }
 
@@ -145,6 +166,13 @@ export function renderPage(content: string, filePath: string): string {
     pre.output { background: #e8f5e9; border-left: 3px solid #4caf50; white-space: pre-wrap; }
     pre.output:empty { display: none; }
     pre.output:not(:empty)::before { content: "output:"; display: block; font-family: system-ui, sans-serif; font-size: 0.75em; font-weight: bold; color: #388e3c; margin-bottom: 0.4rem; }
+    [data-cell] { cursor: text; border-radius: 4px; padding: 0.2rem 0.4rem; }
+    [data-cell]:hover { background: #f9f9f9; outline: 1px dashed #ddd; }
+    [data-cell].editing { outline: 2px solid #4f8ef7; background: #f0f6ff; }
+    [data-cell].editing textarea { width: 100%; box-sizing: border-box; border: none; outline: none; background: transparent; font-family: inherit; font-size: inherit; line-height: inherit; resize: vertical; min-height: 2em; }
+    .edit-hint { display: none; font-size: 0.72rem; color: #4f8ef7; text-align: right; margin-top: 0.2rem; }
+    .edit-hint::after { content: "⌘↵ save  ·  Esc cancel"; }
+    [data-cell].editing .edit-hint { display: block; }
   </style>
 </head>
 <body>
@@ -152,6 +180,58 @@ ${body}
 <script>
   const es = new EventSource('/events');
   es.addEventListener('change', () => location.reload());
+
+  document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'BUTTON') return;
+    if (document.querySelector('[data-cell].editing')) return;
+    var cell = e.target.closest('[data-cell]');
+    if (!cell) return;
+    startEditing(cell);
+  });
+
+  function startEditing(cell) {
+    var originalHTML = cell.innerHTML;
+    var raw = cell.dataset.raw;
+    cell.classList.add('editing');
+    cell.innerHTML = '<textarea></textarea><div class="edit-hint"></div>';
+    var ta = cell.querySelector('textarea');
+    ta.value = raw;
+    ta.focus();
+    ta.select();
+    ta.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        cell.classList.remove('editing');
+        cell.innerHTML = originalHTML;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        saveEdit(cell, ta.value);
+      }
+    });
+  }
+
+  function saveEdit(cell, newContent) {
+    var cellIndex = cell.dataset.cell;
+    var body = new URLSearchParams({ cell: cellIndex, content: newContent });
+    fetch('/edit', { method: 'POST', body: body })
+      .then(function(r) {
+        if (!r.ok) {
+          return r.text().then(function(msg) {
+            var errDiv = document.createElement('div');
+            errDiv.style.cssText = 'color:red;font-size:0.85em;padding:0.3rem';
+            errDiv.textContent = msg;
+            cell.innerHTML = '<textarea></textarea><div class="edit-hint"></div>';
+            cell.insertBefore(errDiv, cell.firstChild);
+            var ta = cell.querySelector('textarea');
+            ta.value = newContent;
+            ta.focus();
+          });
+        }
+        return r.text().then(function(html) {
+          cell.outerHTML = html;
+        });
+      });
+  }
 </script>
 </body>
 </html>`;
