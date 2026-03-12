@@ -139,6 +139,7 @@ export function renderPage(content: string, filePath: string): string {
     button { margin-top: 0.5rem; padding: 0.3rem 0.8rem; cursor: pointer; font-size: 0.85rem; }
     pre.output { background: #e8f5e9; border-left: 3px solid #4caf50; white-space: pre-wrap; }
     pre.output:empty { display: none; }
+    pre.output:not(:empty)::before { content: "output:"; display: block; font-family: system-ui, sans-serif; font-size: 0.75em; font-weight: bold; color: #388e3c; margin-bottom: 0.4rem; }
   </style>
 </head>
 <body>

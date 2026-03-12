@@ -54,7 +54,11 @@ export async function runSnippet(lang: string, code: string): Promise<RunResult>
 
     const out = new TextDecoder().decode(stdout);
     const err = new TextDecoder().decode(stderr);
-    const combined = (out + err).trimEnd();
+    // Strip ANSI escape codes so output stored in the markdown file is plain text
+    const combined = (out + err).trimEnd().replace(
+      /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]/g,
+      "",
+    );
 
     return { output: combined, exitCode, timedOut, notFound: false };
   } finally {
