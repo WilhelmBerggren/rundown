@@ -9,9 +9,10 @@ export interface Snippet {
   code: string;
 }
 
-export function parseSnippets(
-  content: string,
-): { snippets: Snippet[]; outputMap: Map<number, string> } {
+export function parseSnippets(content: string): {
+  snippets: Snippet[];
+  outputMap: Map<number, string>;
+} {
   const tokens = Lexer.lex(content);
   const snippets: Snippet[] = [];
   const outputMap = new Map<number, string>();
@@ -21,7 +22,11 @@ export function parseSnippets(
 
   for (const token of tokens) {
     if (token.type === "space") continue;
-    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
+    if (
+      token.type === "paragraph" &&
+      (token as { text: string }).text.trim() === "output:"
+    )
+      continue;
 
     if (token.type !== "code") {
       lastRunnableIndex = null;
@@ -50,6 +55,19 @@ export function parseSnippets(
   return { snippets, outputMap };
 }
 
+/** Count the non-excluded cells that a markdown string would produce. */
+export function countNewCells(markdown: string): number {
+  const tokens = Lexer.lex(markdown);
+  let count = 0;
+  for (const token of tokens) {
+    if (token.type === "space") continue;
+    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
+    if (token.type === "code" && (token.lang ?? "").toLowerCase() === "output") continue;
+    count++;
+  }
+  return count;
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -68,8 +86,15 @@ function buildOutputMap(tokens: TokensList): Map<number, string> {
 
   for (const token of tokens) {
     if (token.type === "space") continue;
-    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
-    if (token.type !== "code") { lastRunnable = null; continue; }
+    if (
+      token.type === "paragraph" &&
+      (token as { text: string }).text.trim() === "output:"
+    )
+      continue;
+    if (token.type !== "code") {
+      lastRunnable = null;
+      continue;
+    }
 
     const lang = (token.lang ?? "").toLowerCase();
     if (lang === "output") {
@@ -146,15 +171,23 @@ export function renderCellFragment(content: string, cellIndex: number): string {
     if (pos !== -1) searchFrom = pos + token.raw.length;
 
     if (token.type === "space") continue;
-    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
-    if (token.type === "code" && (token.lang ?? "").toLowerCase() === "output") continue;
+    if (
+      token.type === "paragraph" &&
+      (token as { text: string }).text.trim() === "output:"
+    )
+      continue;
+    if (token.type === "code" && (token.lang ?? "").toLowerCase() === "output")
+      continue;
 
     if (ci === cellIndex) {
       return renderTokenCell(token, ci, si, outputMap, tokens);
     }
 
     ci++;
-    if (token.type === "code" && KNOWN_LANGUAGES[(token.lang ?? "").toLowerCase()]) {
+    if (
+      token.type === "code" &&
+      KNOWN_LANGUAGES[(token.lang ?? "").toLowerCase()]
+    ) {
       si++;
     }
   }
@@ -173,14 +206,24 @@ export function renderPage(content: string, filePath: string): string {
   for (const token of tokens) {
     // Excluded from cell model — skip entirely
     if (token.type === "space") continue;
-    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
-    if (token.type === "code" && (token.lang ?? "").toLowerCase() === "output") continue;
+    if (
+      token.type === "paragraph" &&
+      (token as { text: string }).text.trim() === "output:"
+    )
+      continue;
+    if (token.type === "code" && (token.lang ?? "").toLowerCase() === "output")
+      continue;
 
-    parts.push(renderTokenCell(token, cellIndex, snippetIndex, outputMap, tokens));
+    parts.push(
+      renderTokenCell(token, cellIndex, snippetIndex, outputMap, tokens),
+    );
     cellIndex++;
 
     // Advance snippet index only for known-language code blocks
-    if (token.type === "code" && KNOWN_LANGUAGES[(token.lang ?? "").toLowerCase()]) {
+    if (
+      token.type === "code" &&
+      KNOWN_LANGUAGES[(token.lang ?? "").toLowerCase()]
+    ) {
       snippetIndex++;
     }
   }
@@ -228,13 +271,14 @@ ${body}
     startEditing(cell);
   });
 
-  function startEditing(cell) {
+    function startEditing(cell) {
     var originalHTML = cell.innerHTML;
     var raw = cell.dataset.raw;
+    var trailingNl = (raw.match(/\\n+$/) || [''])[0];
     cell.classList.add('editing');
     cell.innerHTML = '<textarea></textarea><div class="edit-hint"></div>';
     var ta = cell.querySelector('textarea');
-    ta.value = raw;
+    ta.value = raw.slice(0, raw.length - trailingNl.length);
     ta.focus();
     ta.select();
     ta.addEventListener('keydown', function(e) {
@@ -244,7 +288,7 @@ ${body}
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        saveEdit(cell, ta.value);
+        saveEdit(cell, ta.value + trailingNl);
       }
     });
   }
@@ -269,9 +313,20 @@ ${body}
         return r.text().then(function(html) {
           var tmp = document.createElement('template');
           tmp.innerHTML = html;
-          var newCell = tmp.content.firstElementChild;
-          cell.replaceWith(newCell);
-          htmx.process(newCell);
+          var newCells = Array.from(tmp.content.children);
+          var delta = newCells.length - 1;
+          cell.replaceWith.apply(cell, newCells);
+          newCells.forEach(function(nc) { htmx.process(nc); });
+          if (delta !== 0) {
+            var lastNew = newCells[newCells.length - 1];
+            var sib = lastNew ? lastNew.nextElementSibling : null;
+            while (sib) {
+              if (sib.dataset && sib.dataset.cell !== undefined) {
+                sib.dataset.cell = String(parseInt(sib.dataset.cell) + delta);
+              }
+              sib = sib.nextElementSibling;
+            }
+          }
         });
       });
   }

@@ -1,6 +1,6 @@
 // src/server.ts
 import { Hono } from "hono";
-import { parseSnippets, renderCellFragment, renderPage } from "./markdown.ts";
+import { countNewCells, parseSnippets, renderCellFragment, renderPage } from "./markdown.ts";
 import { runSnippet } from "./runner.ts";
 import { updateBlock, updateOutputBlock, writeOutput } from "./writer.ts";
 import { createWatcher, type Watcher } from "./watcher.ts";
@@ -107,8 +107,11 @@ export function createApp(filePath: string) {
       const updated = updateBlock(content, cellIndex, newContent);
       watcher.suppress();
       await writeOutput(filePath, updated);
-      const fragment = renderCellFragment(updated, cellIndex);
-      return c.html(fragment);
+      const k = countNewCells(newContent);
+      const fragments = Array.from({ length: k }, (_, i) =>
+        renderCellFragment(updated, cellIndex + i)
+      ).join("");
+      return c.html(fragments);
     } catch (e) {
       if (e instanceof Error && e.message.includes("not found")) {
         return c.text(`Error: ${e.message}`, 400);

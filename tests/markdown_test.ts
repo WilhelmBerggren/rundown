@@ -1,6 +1,6 @@
 // tests/markdown_test.ts
 import { assert, assertEquals } from "@std/assert";
-import { parseSnippets, renderCellFragment, renderPage } from "../src/markdown.ts";
+import { countNewCells, parseSnippets, renderCellFragment, renderPage } from "../src/markdown.ts";
 
 Deno.test("parseSnippets: assigns sequential indices to runnable snippets", () => {
   const md = [
@@ -237,4 +237,22 @@ Deno.test("renderCellFragment: throws for out-of-range index", () => {
   let threw = false;
   try { renderCellFragment(md, 5); } catch { threw = true; }
   assertEquals(threw, true);
+});
+
+Deno.test("countNewCells: single block returns 1", () => {
+  assertEquals(countNewCells("## Heading\n"), 1);
+});
+
+Deno.test("countNewCells: heading plus paragraph returns 2", () => {
+  assertEquals(countNewCells("## Heading\n\nMore words\n"), 2);
+});
+
+Deno.test("countNewCells: space-only returns 0", () => {
+  assertEquals(countNewCells("\n\n"), 0);
+});
+
+Deno.test("countNewCells: output block and label are excluded", () => {
+  // only the js snippet counts; output: label and ```output block are excluded
+  const md = "```js\nx()\n```\n\noutput:\n```output\nresult\n```\n";
+  assertEquals(countNewCells(md), 1);
 });
