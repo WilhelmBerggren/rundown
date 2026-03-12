@@ -1,39 +1,48 @@
-# rundoc
+# rundown
+rundown turns your markdown file into a notebook
 
-rundoc makes your code snippets runnable. It is a lightweight alternative to a jupyter notebook.
+## Usage
 
-Try it with this command:
 ```sh
-rundoc README.md
+echo hello there
 ```
 
-It should show a rendered markdown page, with a "run" button below code snippets like this one:
+output:
+```output
+hello there
+```
+
+```sh
+rundown <file.md>
+rundown <file.md> --port 8080
+rundown <file.md> --no-open
+```
+
+## Examples
 
 ```js
 console.log(new Date());
 ```
 
+output:
 ```output
-2026-03-12T15:12:42.854Z
+2026-03-12T20:36:31.235Z
 ```
 
 When you run it, its output gets appended below the code snippet. If you run it again, it gets replaced.
 
 ## Installation
 
+
+```sh
+brew install deno
+```
+
 ```sh
 # Install from source (requires Deno)
 deno compile --allow-read --allow-write --allow-net --allow-run \
-  --output rundoc \
+  --output rundown \
   src/main.ts
-```
-
-## Usage
-
-```sh
-rundoc <file.md>
-rundoc <file.md> --port 8080
-rundoc <file.md> --no-open
 ```
 
 ## Supported languages

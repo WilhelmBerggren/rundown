@@ -25,36 +25,45 @@ Deno.test("runSnippet: notFound is false when interpreter exists", async () => {
   assertEquals(result.notFound, false);
 });
 
-Deno.test("runSnippet: notFound result shape is correct regardless of ruby presence", async () => {
-  // ruby maps to the "ruby" interpreter; if not installed, we get notFound=true
-  const result = await runSnippet("ruby", "puts 'hi'");
-  if (result.notFound) {
-    // ruby not installed — verify ENOENT result shape
-    assertEquals(result.exitCode, -1);
-    assertEquals(result.timedOut, false);
-    assertEquals(result.output, "");
-  } else {
-    // ruby is installed — verify it ran successfully
-    assertStringIncludes(result.output, "hi");
-  }
-});
+Deno.test(
+  "runSnippet: notFound result shape is correct regardless of ruby presence",
+  async () => {
+    // ruby maps to the "ruby" interpreter; if not installed, we get notFound=true
+    const result = await runSnippet("ruby", "puts 'hi'");
+    if (result.notFound) {
+      // ruby not installed — verify ENOENT result shape
+      assertEquals(result.exitCode, -1);
+      assertEquals(result.timedOut, false);
+      assertEquals(result.output, "");
+    } else {
+      // ruby is installed — verify it ran successfully
+      assertStringIncludes(result.output, "hi");
+    }
+  },
+);
 
 Deno.test("runSnippet: python snippet runs correctly", async () => {
   const result = await runSnippet("python", "print(1 + 1)");
   assertStringIncludes(result.output, "2");
 });
 
-Deno.test("runSnippet: notFound is true for guaranteed-missing interpreter", async () => {
-  // Temporarily register a fake language with a nonexistent interpreter
-  // to deterministically exercise the ENOENT code path
-  KNOWN_LANGUAGES["__test_fake__"] = { ext: ".txt", interpreter: "__nonexistent_rundoc_test_interpreter__" };
-  try {
-    const result = await runSnippet("__test_fake__", "hello");
-    assertEquals(result.notFound, true);
-    assertEquals(result.exitCode, -1);
-    assertEquals(result.timedOut, false);
-    assertEquals(result.output, "");
-  } finally {
-    delete KNOWN_LANGUAGES["__test_fake__"];
-  }
-});
+Deno.test(
+  "runSnippet: notFound is true for guaranteed-missing interpreter",
+  async () => {
+    // Temporarily register a fake language with a nonexistent interpreter
+    // to deterministically exercise the ENOENT code path
+    KNOWN_LANGUAGES["__test_fake__"] = {
+      ext: ".txt",
+      interpreter: "__nonexistent_rundown_test_interpreter__",
+    };
+    try {
+      const result = await runSnippet("__test_fake__", "hello");
+      assertEquals(result.notFound, true);
+      assertEquals(result.exitCode, -1);
+      assertEquals(result.timedOut, false);
+      assertEquals(result.output, "");
+    } finally {
+      delete KNOWN_LANGUAGES["__test_fake__"];
+    }
+  },
+);

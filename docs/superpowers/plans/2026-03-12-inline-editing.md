@@ -711,7 +711,7 @@ In a second terminal:
 # Get the current cell 0 content (the first rendered block in README.md)
 # Then send an edit — this should replace cell 0 and return its re-rendered HTML
 curl -s -X POST http://localhost:7700/edit \
-  -d "cell=0&content=%23%20rundoc%0A" \
+  -d "cell=0&content=%23%20rundown%0A" \
   | grep 'data-cell="0"'
 ```
 

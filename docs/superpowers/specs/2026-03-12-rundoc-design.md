@@ -1,11 +1,11 @@
-# rundoc Design Spec
+# rundown Design Spec
 
 **Date:** 2026-03-12
 **Status:** Approved
 
 ## Overview
 
-rundoc is a CLI tool that makes markdown code snippets runnable. It is a lightweight alternative to Jupyter notebooks. You point it at a markdown file, it opens a browser showing a rendered version of that file, and code snippets have a "Run" button. When you run a snippet, the output is written back into the markdown file as an ` ```output ` block — making results portable and viewable in any standard markdown renderer.
+rundown is a CLI tool that makes markdown code snippets runnable. It is a lightweight alternative to Jupyter notebooks. You point it at a markdown file, it opens a browser showing a rendered version of that file, and code snippets have a "Run" button. When you run a snippet, the output is written back into the markdown file as an ` ```output ` block — making results portable and viewable in any standard markdown renderer.
 
 ## Stack
 
@@ -18,7 +18,7 @@ rundoc is a CLI tool that makes markdown code snippets runnable. It is a lightwe
 ## CLI Interface
 
 ```
-rundoc <file.md> [--port 7700] [--no-open]
+rundown <file.md> [--port 7700] [--no-open]
 ```
 
 - Starts a Hono HTTP server on the given port (default: `7700`)
@@ -29,7 +29,7 @@ rundoc <file.md> [--port 7700] [--no-open]
 ## Architecture
 
 ```
-rundoc <file.md>
+rundown <file.md>
     │
     ├── Hono HTTP server (localhost:PORT)
     │     ├── GET /        → render full HTML page
@@ -65,7 +65,7 @@ All snippets are written to a temporary file with the appropriate extension befo
 | `sh` | `.sh` | `sh <tmpfile>` |
 | `ruby` | `.rb` | `ruby <tmpfile>` |
 
-**Note:** Running `js`/`ts` snippets requires `deno` to be present on the user's `PATH` — the compiled rundoc binary does not bundle a JS runtime. If `deno` is not installed, the run will produce an "interpreter not found" error.
+**Note:** Running `js`/`ts` snippets requires `deno` to be present on the user's `PATH` — the compiled rundown binary does not bundle a JS runtime. If `deno` is not installed, the run will produce an "interpreter not found" error.
 
 ### Interpreter not found detection
 
@@ -171,7 +171,7 @@ deno compile \
   --allow-write \
   --allow-net \
   --allow-run=deno,python3,bash,sh,ruby,open,xdg-open,cmd \
-  --output rundoc \
+  --output rundown \
   src/main.ts
 ```
 

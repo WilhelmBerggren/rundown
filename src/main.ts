@@ -2,10 +2,12 @@
 import { createApp } from "./server.ts";
 
 function printUsage() {
-  console.error("Usage: rundoc <file.md> [--port <port>] [--no-open]");
+  console.error("Usage: rundown <file.md> [--port <port>] [--no-open]");
 }
 
-function parseArgs(args: string[]): { file: string; port: number; open: boolean } | null {
+function parseArgs(
+  args: string[],
+): { file: string; port: number; open: boolean } | null {
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--port") {
@@ -53,8 +55,11 @@ async function main() {
   const { app, watcher } = createApp(file);
 
   const ac = new AbortController();
-  const server = Deno.serve({ port, signal: ac.signal, onListen: () => {} }, app.fetch);
-  console.log(`rundoc running at http://localhost:${port}`);
+  const server = Deno.serve(
+    { port, signal: ac.signal, onListen: () => {} },
+    app.fetch,
+  );
+  console.log(`rundown running at http://localhost:${port}`);
 
   if (open) {
     const url = `http://localhost:${port}`;

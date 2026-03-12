@@ -5,7 +5,7 @@
 
 ## Overview
 
-Add Jupyter-style inline editing to rundoc's web interface. Every rendered block (heading, paragraph, list, code snippet) becomes a clickable "cell". Clicking a cell replaces it with a textarea containing the raw markdown source. `Cmd/Ctrl+Enter` saves the edit back to the `.md` file and re-renders the cell in place. `Escape` cancels.
+Add Jupyter-style inline editing to rundown's web interface. Every rendered block (heading, paragraph, list, code snippet) becomes a clickable "cell". Clicking a cell replaces it with a textarea containing the raw markdown source. `Cmd/Ctrl+Enter` saves the edit back to the `.md` file and re-renders the cell in place. `Escape` cancels.
 
 ## Cell Model
 
