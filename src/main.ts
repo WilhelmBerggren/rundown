@@ -52,7 +52,8 @@ async function main() {
 
   const { app, watcher } = createApp(file);
 
-  const server = Deno.serve({ port }, app.fetch);
+  const ac = new AbortController();
+  const server = Deno.serve({ port, signal: ac.signal, onListen: () => {} }, app.fetch);
   console.log(`rundoc running at http://localhost:${port}`);
 
   if (open) {
@@ -67,12 +68,13 @@ async function main() {
     }
   }
 
-  // Graceful shutdown on SIGINT
-  Deno.addSignalListener("SIGINT", async () => {
+  // Graceful shutdown on SIGINT (Ctrl+C)
+  Deno.addSignalListener("SIGINT", () => {
     watcher.stop();
-    await server.shutdown();
-    Deno.exit(0);
+    ac.abort();
   });
+
+  await server.finished;
 }
 
 main();

@@ -29,9 +29,11 @@ export function createWatcher(filePath: string): Watcher {
     }
   }
 
+  let fsWatcher: Deno.FsWatcher | null = null;
+
   async function watch() {
-    const watcher = Deno.watchFs(filePath);
-    for await (const event of watcher) {
+    fsWatcher = Deno.watchFs(filePath);
+    for await (const event of fsWatcher) {
       if (stopped) break;
       if (!["modify", "rename"].includes(event.kind)) continue;
 
@@ -58,6 +60,7 @@ export function createWatcher(filePath: string): Watcher {
     stop() {
       stopped = true;
       if (debounceTimer) clearTimeout(debounceTimer);
+      fsWatcher?.close(); // immediately terminates the for-await loop
     },
   };
 }
