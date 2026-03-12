@@ -10,7 +10,11 @@ rundoc README.md
 It should show a rendered markdown page, with a "run" button below code snippets like this one:
 
 ```js
-console.log(1 + 1);
+console.log(new Date());
+```
+
+```output
+2026-03-12T15:12:42.854Z
 ```
 
 When you run it, its output gets appended below the code snippet. If you run it again, it gets replaced.
@@ -19,8 +23,7 @@ When you run it, its output gets appended below the code snippet. If you run it 
 
 ```sh
 # Install from source (requires Deno)
-deno compile --allow-read --allow-write --allow-net \
-  --allow-run=deno,python3,bash,sh,ruby,open,xdg-open,cmd \
+deno compile --allow-read --allow-write --allow-net --allow-run \
   --output rundoc \
   src/main.ts
 ```
