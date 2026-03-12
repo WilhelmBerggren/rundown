@@ -267,7 +267,11 @@ ${body}
           });
         }
         return r.text().then(function(html) {
-          cell.outerHTML = html;
+          var tmp = document.createElement('template');
+          tmp.innerHTML = html;
+          var newCell = tmp.content.firstElementChild;
+          cell.replaceWith(newCell);
+          htmx.process(newCell);
         });
       });
   }

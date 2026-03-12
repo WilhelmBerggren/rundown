@@ -10,7 +10,10 @@ export interface RunResult {
   notFound: boolean;
 }
 
-export async function runSnippet(lang: string, code: string): Promise<RunResult> {
+export async function runSnippet(
+  lang: string,
+  code: string,
+): Promise<RunResult> {
   const config = KNOWN_LANGUAGES[lang.toLowerCase()];
   if (!config) throw new Error(`Unsupported language: ${lang}`);
 
@@ -39,7 +42,11 @@ export async function runSnippet(lang: string, code: string): Promise<RunResult>
     let timedOut = false;
     const killTimer = setTimeout(() => {
       timedOut = true;
-      try { process.kill("SIGKILL"); } catch { /* already exited */ }
+      try {
+        process.kill("SIGKILL");
+      } catch {
+        /* already exited */
+      }
     }, TIMEOUT_MS);
 
     let exitCode: number;
@@ -55,10 +62,12 @@ export async function runSnippet(lang: string, code: string): Promise<RunResult>
     const out = new TextDecoder().decode(stdout);
     const err = new TextDecoder().decode(stderr);
     // Strip ANSI escape codes so output stored in the markdown file is plain text
-    const combined = (out + err).trimEnd().replace(
-      /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]/g,
-      "",
-    );
+    const combined = (out + err)
+      .trimEnd()
+      .replace(
+        /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]/g,
+        "",
+      );
 
     return { output: combined, exitCode, timedOut, notFound: false };
   } finally {
