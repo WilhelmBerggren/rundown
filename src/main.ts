@@ -6,12 +6,18 @@ function printUsage() {
 }
 
 function parseArgs(args: string[]): { file: string; port: number; open: boolean } | null {
-  const positional = args.filter((a) => !a.startsWith("--"));
+  const positional: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--port") {
+      i++; // skip the port value
+    } else if (!args[i].startsWith("--")) {
+      positional.push(args[i]);
+    }
+  }
   if (positional.length !== 1) {
     printUsage();
     return null;
   }
-
   const file = positional[0];
   let port = 7700;
   let open = true;
@@ -62,9 +68,9 @@ async function main() {
   }
 
   // Graceful shutdown on SIGINT
-  Deno.addSignalListener("SIGINT", () => {
+  Deno.addSignalListener("SIGINT", async () => {
     watcher.stop();
-    server.shutdown();
+    await server.shutdown();
     Deno.exit(0);
   });
 }
