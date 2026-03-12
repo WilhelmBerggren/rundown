@@ -289,6 +289,8 @@ ${body}
     cell.innerHTML = '<textarea></textarea><div class="edit-hint"></div>';
     var ta = cell.querySelector('textarea');
     ta.value = raw.slice(0, raw.length - trailingNl.length);
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
     ta.focus();
     ta.select();
     ta.addEventListener('keydown', function(e) {
