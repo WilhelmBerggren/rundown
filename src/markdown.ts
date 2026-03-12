@@ -125,6 +125,43 @@ function renderTokenCell(
   return `<div data-cell="${cellIndex}" data-raw="${rawAttr}">${Parser.parse(tl)}</div>`;
 }
 
+/**
+ * Re-renders just the cell at `cellIndex` as a `<div data-cell="N">` fragment.
+ * Walks tokens using the same exclusion rules and searchFrom cursor as updateBlock
+ * so indices stay in sync across all three walking functions.
+ * Throws if the cell index is not found.
+ */
+export function renderCellFragment(content: string, cellIndex: number): string {
+  const tokens = Lexer.lex(content);
+  const outputMap = buildOutputMap(tokens);
+
+  let ci = 0;
+  let si = 0;
+  let searchFrom = 0;
+
+  for (const token of tokens) {
+    // Advance searchFrom for ALL tokens (including excluded) so duplicate-block
+    // matching is monotonic and consistent with updateBlock.
+    const pos = content.indexOf(token.raw, searchFrom);
+    if (pos !== -1) searchFrom = pos + token.raw.length;
+
+    if (token.type === "space") continue;
+    if (token.type === "paragraph" && (token as { text: string }).text.trim() === "output:") continue;
+    if (token.type === "code" && (token.lang ?? "").toLowerCase() === "output") continue;
+
+    if (ci === cellIndex) {
+      return renderTokenCell(token, ci, si, outputMap, tokens);
+    }
+
+    ci++;
+    if (token.type === "code" && KNOWN_LANGUAGES[(token.lang ?? "").toLowerCase()]) {
+      si++;
+    }
+  }
+
+  throw new Error(`Cell index ${cellIndex} not found`);
+}
+
 export function renderPage(content: string, filePath: string): string {
   const tokens = Lexer.lex(content);
   const outputMap = buildOutputMap(tokens);

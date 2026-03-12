@@ -1,6 +1,6 @@
 // tests/markdown_test.ts
 import { assert, assertEquals } from "@std/assert";
-import { parseSnippets, renderPage } from "../src/markdown.ts";
+import { parseSnippets, renderCellFragment, renderPage } from "../src/markdown.ts";
 
 Deno.test("parseSnippets: assigns sequential indices to runnable snippets", () => {
   const md = [
@@ -193,4 +193,48 @@ Deno.test("renderPage: data-raw encodes newlines as &#10; for attribute safety",
   const html = renderPage(md, "test.md");
   // Newlines in token.raw must be encoded as &#10; so dataset.raw round-trips correctly
   assert(html.includes('data-raw="```js&#10;x()&#10;```&#10;"'));
+});
+
+Deno.test("renderCellFragment: returns wrapped HTML for a paragraph cell", () => {
+  const md = "# Heading\n\nA paragraph.\n";
+  // heading = cell 0, paragraph = cell 1
+  const html = renderCellFragment(md, 1);
+  assert(html.includes('data-cell="1"'));
+  assert(html.includes("<p>"));
+  assert(html.includes("A paragraph."));
+  // Should not include the heading
+  assert(!html.includes("Heading"));
+});
+
+Deno.test("renderCellFragment: returns snippet cell with correct run button index", () => {
+  // heading = cell 0 (snippet index irrelevant), snippet = cell 1 (snippet index 0)
+  const md = "# Heading\n\n```js\nx()\n```\n";
+  const html = renderCellFragment(md, 1);
+  assert(html.includes('data-cell="1"'));
+  assert(html.includes('hx-post="/run"'));
+  assert(html.includes('"index": 0'));
+  assert(html.includes('id="output-0"'));
+});
+
+Deno.test("renderCellFragment: snippet index is independent from cell index", () => {
+  // Two prose blocks before the second snippet
+  // prose1=cell0, snippet1=cell1(si=0), prose2=cell2, snippet2=cell3(si=1)
+  const md = "Intro.\n\n```js\na()\n```\n\nMiddle.\n\n```python\nb()\n```\n";
+  const html = renderCellFragment(md, 3);
+  assert(html.includes('data-cell="3"'));
+  assert(html.includes('"index": 1'));
+  assert(html.includes('id="output-1"'));
+});
+
+Deno.test("renderCellFragment: includes existing output in snippet cell", () => {
+  const md = "```js\nx()\n```\n\n```output\nhello\n```\n";
+  const html = renderCellFragment(md, 0);
+  assert(html.includes("hello"));
+});
+
+Deno.test("renderCellFragment: throws for out-of-range index", () => {
+  const md = "Just a paragraph.\n";
+  let threw = false;
+  try { renderCellFragment(md, 5); } catch { threw = true; }
+  assertEquals(threw, true);
 });
