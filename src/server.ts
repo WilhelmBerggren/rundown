@@ -1,8 +1,8 @@
 // src/server.ts
 import { Hono } from "hono";
-import { parseSnippets, renderPage } from "./markdown.ts";
+import { parseSnippets, renderCellFragment, renderPage } from "./markdown.ts";
 import { runSnippet } from "./runner.ts";
-import { updateOutputBlock, writeOutput } from "./writer.ts";
+import { updateBlock, updateOutputBlock, writeOutput } from "./writer.ts";
 import { createWatcher, type Watcher } from "./watcher.ts";
 
 function outputFragment(index: number, text: string, isError = false): string {
@@ -87,6 +87,34 @@ export function createApp(filePath: string) {
     } finally {
       runLock = null;
       resolveLock();
+    }
+  });
+
+  // POST /edit — update a cell's source markdown, return re-rendered fragment
+  app.post("/edit", async (c) => {
+    const form = await c.req.formData();
+    const cellStr = form.get("cell");
+    const newContent = form.get("content");
+
+    if (cellStr === null || typeof cellStr !== "string") return c.text("Missing cell", 400);
+    if (newContent === null || typeof newContent !== "string") return c.text("Missing content", 400);
+
+    const cellIndex = parseInt(cellStr, 10);
+    if (isNaN(cellIndex)) return c.text("Invalid cell index", 400);
+
+    try {
+      const content = await Deno.readTextFile(filePath);
+      const updated = updateBlock(content, cellIndex, newContent);
+      watcher.suppress();
+      await writeOutput(filePath, updated);
+      const fragment = renderCellFragment(updated, cellIndex);
+      return c.html(fragment);
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("not found")) {
+        return c.text(`Error: ${e.message}`, 400);
+      }
+      console.error("Failed to write edit:", e);
+      return c.text("Error: could not save edit", 500);
     }
   });
 
