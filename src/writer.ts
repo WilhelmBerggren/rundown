@@ -35,7 +35,6 @@ export function updateOutputBlock(
     }
 
     // Find the closing fence of this code block
-    const openLine = i;
     i++;
     while (i < lines.length && !lines[i].startsWith(fence)) i++;
     const closeLine = i;
