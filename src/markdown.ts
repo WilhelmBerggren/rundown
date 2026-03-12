@@ -122,12 +122,19 @@ function renderTokenCell(
   outputMap: Map<number, string>,
   allTokens: TokensList,
 ): string {
-  const rawAttr = escapeHtml(token.raw);
-
   if (token.type === "code") {
     const lang = (token.lang ?? "").toLowerCase();
     if (KNOWN_LANGUAGES[lang]) {
+      const rawAttr = escapeHtml(token.raw);
       const existingOutput = outputMap.get(snippetIndex) ?? "";
+      const clearBtn = existingOutput
+        ? `<button
+    hx-post="/clear"
+    hx-vals='{"index": ${snippetIndex}}'
+    hx-target="#output-${snippetIndex}"
+    hx-swap="outerHTML"
+  >Clear</button>`
+        : "";
       return `
 <div data-cell="${cellIndex}" data-raw="${rawAttr}" class="snippet">
   <pre><code>${escapeHtml(token.text)}</code></pre>
@@ -138,14 +145,17 @@ function renderTokenCell(
     hx-swap="outerHTML"
     hx-indicator="#spinner-${snippetIndex}"
   >Run</button>
+  ${clearBtn}
   <span id="spinner-${snippetIndex}" class="htmx-indicator">running…</span>
   <pre id="output-${snippetIndex}" class="output">${escapeHtml(existingOutput)}</pre>
 </div>`;
     } else {
+      const rawAttr = escapeHtml(token.raw);
       return `<div data-cell="${cellIndex}" data-raw="${rawAttr}"><pre><code class="language-${escapeHtml(lang)}">${escapeHtml(token.text)}</code></pre></div>`;
     }
   }
 
+  const rawAttr = escapeHtml(token.raw);
   const tl = Object.assign([token as Token], { links: allTokens.links });
   return `<div data-cell="${cellIndex}" data-raw="${rawAttr}">${Parser.parse(tl)}</div>`;
 }

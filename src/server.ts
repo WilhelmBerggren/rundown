@@ -2,7 +2,7 @@
 import { Hono } from "hono";
 import { countNewCells, parseSnippets, renderCellFragment, renderPage } from "./markdown.ts";
 import { runSnippet } from "./runner.ts";
-import { updateBlock, updateOutputBlock, writeOutput } from "./writer.ts";
+import { removeOutputBlock, updateBlock, updateOutputBlock, writeOutput } from "./writer.ts";
 import { createWatcher, type Watcher } from "./watcher.ts";
 
 function outputFragment(index: number, text: string, isError = false): string {
@@ -119,6 +119,21 @@ export function createApp(filePath: string) {
       console.error("Failed to write edit:", e);
       return c.text("Error: could not save edit", 500);
     }
+  });
+
+  // POST /clear — remove output block for a snippet, return empty output pre
+  app.post("/clear", async (c) => {
+    const form = await c.req.formData();
+    const indexStr = form.get("index");
+    if (indexStr === null) return c.text("Missing index", 400);
+    const index = parseInt(String(indexStr), 10);
+    if (isNaN(index)) return c.text("Invalid index", 400);
+
+    const content = await Deno.readTextFile(filePath);
+    const updated = removeOutputBlock(content, index);
+    watcher.suppress();
+    await writeOutput(filePath, updated);
+    return c.html(outputFragment(index, ""));
   });
 
   // GET /events — SSE for file-change reload

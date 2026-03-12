@@ -130,6 +130,82 @@ export function updateBlock(
 }
 
 /**
+ * Returns new markdown content with the output block for snippet at
+ * `snippetIndex` removed (including the "output:" label and blank line
+ * before it). Returns content unchanged if no output block is found.
+ */
+export function removeOutputBlock(
+  content: string,
+  snippetIndex: number,
+): string {
+  const lines = content.split("\n");
+  let runnableCount = 0;
+  let i = 0;
+
+  while (i < lines.length) {
+    const fenceMatch = lines[i].match(/^(`{3,})([\w-]*)/);
+
+    if (!fenceMatch) {
+      i++;
+      continue;
+    }
+
+    const fence = fenceMatch[1];
+    const lang = fenceMatch[2].toLowerCase();
+
+    if (lang === "output") {
+      i++;
+      while (i < lines.length && !lines[i].startsWith(fence)) i++;
+      i++;
+      continue;
+    }
+
+    i++;
+    while (i < lines.length && !lines[i].startsWith(fence)) i++;
+    const closeLine = i;
+    i++;
+
+    if (!KNOWN_LANGUAGES[lang]) continue;
+
+    if (runnableCount !== snippetIndex) {
+      runnableCount++;
+      continue;
+    }
+
+    // Found target snippet. Look for associated output block.
+    let j = i;
+    while (j < lines.length && lines[j].trim() === "") j++;
+
+    let outputLabelLine: number | null = null;
+    if (j < lines.length && lines[j].trim() === "output:") {
+      outputLabelLine = j;
+      j++;
+      while (j < lines.length && lines[j].trim() === "") j++;
+    }
+
+    const outputFenceMatch = j < lines.length
+      ? lines[j].match(/^(`{3,})output\b/)
+      : null;
+
+    if (!outputFenceMatch) return content; // no output block to remove
+
+    const outputFence = outputFenceMatch[1];
+    // Include the blank line(s) before the label/block in the removal range
+    const removeFrom = outputLabelLine ?? j;
+    const removeStart = (removeFrom > closeLine && lines[removeFrom - 1].trim() === "")
+      ? removeFrom - 1
+      : removeFrom;
+    j++;
+    while (j < lines.length && !lines[j].startsWith(outputFence)) j++;
+
+    lines.splice(removeStart, j - removeStart + 1);
+    return lines.join("\n");
+  }
+
+  return content; // snippet not found or no output block
+}
+
+/**
  * Atomically writes content to filePath via a temp file + rename.
  */
 export async function writeOutput(

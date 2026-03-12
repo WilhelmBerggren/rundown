@@ -1,6 +1,6 @@
 // tests/writer_test.ts
 import { assert, assertEquals } from "@std/assert";
-import { updateBlock, updateOutputBlock } from "../src/writer.ts";
+import { removeOutputBlock, updateBlock, updateOutputBlock } from "../src/writer.ts";
 
 Deno.test("updateOutputBlock: inserts output block after snippet", () => {
   const content = ["```js", "console.log(1);", "```", "", "Some text"].join("\n");
@@ -118,6 +118,53 @@ Deno.test("updateBlock: unknown language code block is a cell", () => {
   assert(result.includes("mermaid"));
   assert(result.includes("Updated."));
   assert(!result.includes("Paragraph."));
+});
+
+Deno.test("removeOutputBlock: removes output block and label", () => {
+  const content = [
+    "```js",
+    "a()",
+    "```",
+    "",
+    "output:",
+    "```output",
+    "result",
+    "```",
+    "",
+    "End.",
+  ].join("\n") + "\n";
+  const result = removeOutputBlock(content, 0);
+  assert(!result.includes("result"));
+  assert(!result.includes("```output"));
+  assert(!result.includes("output:"));
+  assert(result.includes("a()"));
+  assert(result.includes("End."));
+});
+
+Deno.test("removeOutputBlock: returns content unchanged when no output block", () => {
+  const content = ["```js", "a()", "```"].join("\n");
+  assertEquals(removeOutputBlock(content, 0), content);
+});
+
+Deno.test("removeOutputBlock: targets correct snippet by index", () => {
+  const content = [
+    "```js",
+    "a()",
+    "```",
+    "",
+    "```js",
+    "b()",
+    "```",
+    "",
+    "output:",
+    "```output",
+    "b result",
+    "```",
+  ].join("\n");
+  const result = removeOutputBlock(content, 1);
+  assert(!result.includes("b result"));
+  assert(result.includes("a()"));
+  assert(result.includes("b()"));
 });
 
 Deno.test("updateBlock: throws if cell index not found", () => {
