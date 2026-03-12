@@ -19,13 +19,23 @@ Deno.test("runSnippet: non-zero exit code captured in result", async () => {
   assertEquals(result.exitCode, 1);
 });
 
-Deno.test("runSnippet: interpreter not found returns notFound=true", async () => {
+Deno.test("runSnippet: notFound is false when interpreter exists", async () => {
+  const result = await runSnippet("sh", "echo hi");
+  assertEquals(result.notFound, false);
+});
+
+Deno.test("runSnippet: notFound is true when interpreter missing", async () => {
+  // ruby maps to the "ruby" interpreter; if not installed, we get notFound=true
   const result = await runSnippet("ruby", "puts 'hi'");
-  // Ruby may or may not be installed in CI — test the not-found path by using a fake lang
-  // Instead, test the ENOENT path directly via the private helper or a known-missing interpreter
-  // We test this by passing a lang whose interpreter doesn't exist:
-  const result2 = await runSnippet("sh", "echo hi"); // sh should exist
-  assertEquals(result2.notFound, false);
+  if (result.notFound) {
+    // ruby not installed — verify ENOENT result shape
+    assertEquals(result.exitCode, -1);
+    assertEquals(result.timedOut, false);
+    assertEquals(result.output, "");
+  } else {
+    // ruby is installed — verify it ran successfully
+    assertStringIncludes(result.output, "hi");
+  }
 });
 
 Deno.test("runSnippet: python snippet runs correctly", async () => {
