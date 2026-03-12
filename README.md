@@ -2,6 +2,10 @@
 
 rundown is a markdown editor that can run code snippets!
 
+
+https://github.com/user-attachments/assets/2d66b4cc-62f7-403a-ac37-fffb8dc080c3
+
+
 ## Usage
 
 ```sh
