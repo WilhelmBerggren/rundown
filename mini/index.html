@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rundown mini</title>
+  <script src="https://unpkg.com/marked@14/marked.min.js"></script>
+  <style>
+    body { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif; line-height: 1.6; color: #1a1a1a; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+    code { font-family: monospace; font-size: 0.9em; }
+    .snippet { margin: 1rem 0; }
+    button { margin-top: 0.5rem; padding: 0.3rem 0.8rem; cursor: pointer; font-size: 0.85rem; }
+    .output { background: #e8f5e9; border-left: 3px solid #4caf50; padding: 0.8rem 1rem; border-radius: 4px; white-space: pre-wrap; font-family: monospace; font-size: 0.9em; margin-top: 0.5rem; }
+    .output:empty { display: none; }
+    [data-cell] { cursor: text; border-radius: 4px; padding: 0.2rem 0.4rem; }
+    [data-cell]:hover { background: #f9f9f9; outline: 1px dashed #ddd; }
+    [data-cell].editing { outline: 2px solid #4f8ef7; background: #f0f6ff; }
+    [data-cell].editing textarea { width: 100%; box-sizing: border-box; border: none; outline: none; background: transparent; font-family: monospace; font-size: 0.9em; line-height: 1.5; resize: vertical; min-height: 3em; }
+    .edit-hint { font-size: 0.72rem; color: #4f8ef7; text-align: right; margin-top: 0.2rem; display: none; }
+    [data-cell].editing .edit-hint { display: block; }
+  </style>
+</head>
+<body>
+<div id="content"></div>
+<script>
+  var rawSource = '';
+  var snippetIndex = 0; // incremented during post-process, reset each render
+
+  // ── fetch + render ──────────────────────────────────────────────────────────
+  function load() {
+    return fetch('/content')
+      .then(function(r) { return r.text(); })
+      .then(function(src) {
+        rawSource = src;
+        render();
+      });
+  }
+
+  function render() {
+    snippetIndex = 0;
+    var html = marked.parse(rawSource);
+    var div = document.getElementById('content');
+    div.innerHTML = html;
+    postProcess(div);
+  }
+
+  // ── post-process: wrap cells, inject Run buttons ────────────────────────────
+  function postProcess(root) {
+    // Wrap every direct child of #content in a data-cell div.
+    // Output fences (language-output) are removed from the DOM — their content
+    // is already shown in the preceding snippet's output div.
+    // Both this walk and splitRawBlocks skip output fences, keeping indices aligned.
+    var children = Array.from(root.children);
+    var cellIndex = 0;
+    _rawBlocks = null; // reset cache for this render
+    var rawBlocks = splitRawBlocks(rawSource); // excludes output fences
+
+    children.forEach(function(el) {
+      var code = el.querySelector('code');
+      var lang = code ? code.className.replace('language-', '') : '';
+
+      // Remove output fence elements — content shown via extractExistingOutput
+      if (lang === 'output') {
+        el.remove();
+        return;
+      }
+
+      var wrapper = document.createElement('div');
+      wrapper.dataset.cell = cellIndex;
+      wrapper.dataset.raw = rawBlocks[cellIndex] !== undefined ? rawBlocks[cellIndex] : '';
+      cellIndex++;
+
+      el.parentNode.insertBefore(wrapper, el);
+      wrapper.appendChild(el);
+
+      if (['sh', 'bash', 'shell'].indexOf(lang) !== -1) {
+        var idx = snippetIndex++;
+        wrapper.classList.add('snippet');
+        var btn = document.createElement('button');
+        btn.textContent = 'Run';
+        btn.dataset.idx = idx;
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          runSnippet(parseInt(btn.dataset.idx), wrapper);
+        });
+        var out = document.createElement('div');
+        out.className = 'output';
+        out.dataset.outputFor = idx;
+        var outputText = extractExistingOutput(idx);
+        if (outputText !== null) out.textContent = outputText;
+        wrapper.appendChild(btn);
+        wrapper.appendChild(out);
+      }
+    });
+
+    // Click-to-edit on non-button clicks
+    root.addEventListener('click', function(e) {
+      if (e.target.tagName === 'BUTTON') return;
+      if (root.querySelector('[data-cell].editing')) return;
+      var cell = e.target.closest('[data-cell]');
+      if (cell) startEditing(cell);
+    });
+  }
+
+  // ── raw source helpers ──────────────────────────────────────────────────────
+  // Split rawSource into top-level blocks, skipping output fences.
+  // "Block" = consecutive non-blank lines; separated by one or more blank lines.
+  // Fenced code blocks are kept intact (fence toggling tracks open/close).
+  // Output fences (```output...```) are excluded so the index matches postProcess.
+  var _rawBlocks = null;
+
+  function splitRawBlocks(src) {
+    var blocks = [];
+    var current = '';
+    var inFence = false;
+    var fenceLang = '';
+    var lines = src.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var fenceOpen = !inFence && /^```(\w*)/.exec(line);
+      var fenceClose = inFence && /^```\s*$/.test(line);
+      if (fenceOpen) {
+        inFence = true;
+        fenceLang = fenceOpen[1];
+      }
+      if (!inFence && line.trim() === '' && current.trim() !== '') {
+        // End of a block — only push if not an output fence
+        if (!/^```output\n/.test(current.trim())) {
+          blocks.push(current);
+        }
+        current = '';
+      } else {
+        current += (current === '' ? '' : '\n') + line;
+      }
+      if (fenceClose) {
+        inFence = false;
+        // If this closed an output fence, discard it
+        if (fenceLang === 'output') {
+          current = '';
+        }
+        fenceLang = '';
+      }
+    }
+    if (current.trim() !== '' && !/^```output\n/.test(current.trim())) {
+      blocks.push(current);
+    }
+    return blocks;
+  }
+
+  function extractExistingOutput(snippetIdx) {
+    // Find the Nth shell fence in rawSource, check for an output fence after it
+    var shellRe = /```(?:sh|bash|shell)\n[\s\S]*?```/g;
+    var matches = [];
+    var m;
+    while ((m = shellRe.exec(rawSource)) !== null) matches.push(m);
+    if (snippetIdx >= matches.length) return null;
+    var after = rawSource.slice(matches[snippetIdx].index + matches[snippetIdx][0].length);
+    var outM = after.match(/^\n\n?```output\n([\s\S]*?)```/);
+    return outM ? outM[1].replace(/\n$/, '') : null;
+  }
+
+  // ── run ─────────────────────────────────────────────────────────────────────
+  function runSnippet(idx, wrapper) {
+    var out = wrapper.querySelector('[data-output-for="' + idx + '"]');
+    if (out) out.textContent = 'running…';
+    var body = new URLSearchParams({ index: idx });
+    fetch('/run', { method: 'POST', body: body })
+      .then(function(r) { return r.text(); })
+      .then(function(text) {
+        if (out) out.textContent = text;
+      });
+  }
+
+  // ── edit ────────────────────────────────────────────────────────────────────
+  function startEditing(cell) {
+    var raw = cell.dataset.raw || '';
+    var origHTML = cell.innerHTML;
+    cell.classList.add('editing');
+    cell.innerHTML = '<textarea></textarea><div class="edit-hint">⌘↵ save · Esc cancel</div>';
+    var ta = cell.querySelector('textarea');
+    ta.value = raw;
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+    ta.focus();
+
+    ta.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        cell.classList.remove('editing');
+        cell.innerHTML = origHTML;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        saveEdit(cell, raw, ta.value);
+      }
+    });
+  }
+
+  function saveEdit(cell, oldRaw, newRaw) {
+    // Replace first occurrence of oldRaw literally (indexOf avoids $-pattern hazard of .replace)
+    var pos = rawSource.indexOf(oldRaw);
+    var newSource = pos === -1 ? rawSource
+      : rawSource.slice(0, pos) + newRaw + rawSource.slice(pos + oldRaw.length);
+    fetch('/save', { method: 'POST', body: newSource, headers: { 'Content-Type': 'text/plain' } })
+      .then(function(r) {
+        if (!r.ok) {
+          alert('Save failed');
+          return;
+        }
+        return load();
+      });
+  }
+
+  // ── SSE ─────────────────────────────────────────────────────────────────────
+  var es = new EventSource('/events');
+  es.addEventListener('message', function(e) {
+    if (e.data === 'change') load();
+  });
+
+  // ── init ────────────────────────────────────────────────────────────────────
+  load();
+</script>
+</body>
+</html>
