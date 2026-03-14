@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
+import * as crypto from 'crypto';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -34,7 +35,7 @@ export class RundownController {
     const execution = this.controller.createNotebookCellExecution(cell);
     execution.start(Date.now());
 
-    const tmpFile = path.join(os.tmpdir(), `rundown-${Date.now()}.sh`);
+    const tmpFile = path.join(os.tmpdir(), `rundown-${crypto.randomUUID()}.sh`);
     fs.writeFileSync(tmpFile, cell.document.getText());
 
     let stdout = '';
@@ -52,15 +53,27 @@ export class RundownController {
       proc.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
       proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
 
+      proc.on('error', (err: Error) => {
+        clearTimeout(timer);
+        execution.replaceOutput([
+          new vscode.NotebookCellOutput([
+            vscode.NotebookCellOutputItem.text(`Failed to start shell: ${err.message}`, 'text/plain'),
+          ]),
+        ]);
+        execution.end(false, Date.now());
+        resolve();
+      });
+
       proc.on('close', (code: number | null) => {
         clearTimeout(timer);
 
+        // stdout collected first, then stderr — stream ordering not guaranteed
         let combined = (stdout + stderr).replace(ANSI_RE, '');
         if (timedOut) combined += '\nTimed out after 30s';
 
         execution.replaceOutput([
           new vscode.NotebookCellOutput([
-            vscode.NotebookCellOutputItem.text(combined),
+            vscode.NotebookCellOutputItem.text(combined, 'text/plain'),
           ]),
         ]);
 

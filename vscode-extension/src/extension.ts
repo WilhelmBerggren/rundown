@@ -9,7 +9,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   const controller = new RundownController();
-  context.subscriptions.push({ dispose: () => controller.dispose() });
+  context.subscriptions.push(controller);
 
   const command = vscode.commands.registerCommand(
     'rundown.openAsNotebook',

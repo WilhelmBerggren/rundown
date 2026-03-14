@@ -22,7 +22,7 @@ export class RundownSerializer implements vscode.NotebookSerializer {
         if (cell.output !== undefined) {
           cellData.outputs = [
             new vscode.NotebookCellOutput([
-              vscode.NotebookCellOutputItem.text(cell.output),
+              vscode.NotebookCellOutputItem.text(cell.output, 'text/plain'),
             ]),
           ];
         }
@@ -38,6 +38,7 @@ export class RundownSerializer implements vscode.NotebookSerializer {
       if (cell.kind === vscode.NotebookCellKind.Markup) {
         return { kind: 'markup', source: cell.value };
       } else {
+        // Reads first item of first output only — controller always calls replaceOutput (not append)
         const item = cell.outputs?.[0]?.items?.[0];
         const outputText = item ? new TextDecoder().decode(item.data) : undefined;
         return { kind: 'code', source: cell.value, output: outputText };
