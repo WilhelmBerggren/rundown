@@ -1,0 +1,35 @@
+{
+  "name": "rundown",
+  "displayName": "rundown",
+  "description": "Run shell code snippets in markdown files",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Notebooks"],
+  "activationEvents": ["onCommand:rundown.openAsNotebook"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "notebooks": [
+      {
+        "type": "rundown",
+        "displayName": "rundown",
+        "selector": [{ "filenamePattern": "*.md" }]
+      }
+    ],
+    "commands": [
+      {
+        "command": "rundown.openAsNotebook",
+        "title": "rundown: Open as Notebook"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "test": "tsx --test src/parse.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
