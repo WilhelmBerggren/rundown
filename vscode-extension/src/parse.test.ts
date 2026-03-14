@@ -57,7 +57,46 @@ describe('parseMd', () => {
 });
 
 describe('serializeCells', () => {
-  it('placeholder — implemented in Task 3', () => {
-    // intentionally empty — tests added in Task 3
+  it('returns empty string for no cells', () => {
+    assert.equal(serializeCells([]), '');
+  });
+
+  it('serializes a markup cell', () => {
+    assert.equal(
+      serializeCells([{ kind: 'markup', source: '# Hello' }]),
+      '# Hello\n'
+    );
+  });
+
+  it('trims leading/trailing blank lines from markup source', () => {
+    assert.equal(
+      serializeCells([{ kind: 'markup', source: '\n\n# Hello\n\n' }]),
+      '# Hello\n'
+    );
+  });
+
+  it('serializes a code cell without output', () => {
+    assert.equal(
+      serializeCells([{ kind: 'code', source: 'echo hi' }]),
+      '```sh\necho hi\n```\n'
+    );
+  });
+
+  it('serializes a code cell with output', () => {
+    assert.equal(
+      serializeCells([{ kind: 'code', source: 'echo hi', output: 'hello\n' }]),
+      '```sh\necho hi\n```\n\n```output\nhello\n```\n'
+    );
+  });
+
+  it('serializes mixed cells with correct separators', () => {
+    assert.equal(
+      serializeCells([
+        { kind: 'markup', source: 'intro' },
+        { kind: 'code', source: 'echo hi' },
+        { kind: 'markup', source: 'end' },
+      ]),
+      'intro\n\n```sh\necho hi\n```\n\nend\n'
+    );
   });
 });

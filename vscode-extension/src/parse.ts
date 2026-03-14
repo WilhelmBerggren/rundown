@@ -67,6 +67,22 @@ export function parseMd(content: string): ParsedCell[] {
   return cells;
 }
 
-export function serializeCells(_cells: ParsedCell[]): string {
-  throw new Error('not implemented');
+export function serializeCells(cells: ParsedCell[]): string {
+  const parts: string[] = [];
+
+  for (const cell of cells) {
+    if (cell.kind === 'markup') {
+      const source = cell.source.replace(/^\n+|\n+$/g, '');
+      if (source) parts.push(source);
+    } else {
+      const source = cell.source.replace(/^\n+|\n+$/g, '');
+      let block = '```sh\n' + source + '\n```';
+      if (cell.output !== undefined) {
+        block += '\n\n```output\n' + cell.output + '```';
+      }
+      parts.push(block);
+    }
+  }
+
+  return parts.length > 0 ? parts.join('\n\n') + '\n' : '';
 }
